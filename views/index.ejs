@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microweb Image Framework</title>
+    <style>
+        :root {
+            --bg-color: #f4f4f9;
+            --sidebar-bg: #ffffff;
+            --content-bg: #ffffff;
+            --text-color: #333333;
+            --text-light: #777777;
+            --border-color: #eeeeee;
+            --shadow-color: rgba(0,0,0,0.08);
+        }
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background-color: var(--bg-color); color: var(--text-color); }
+
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 2em;
+            height: 64px;
+            background: var(--sidebar-bg);
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 2px 4px var(--shadow-color);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .header-title {
+            font-size: 1.2em;
+            font-weight: 500;
+            text-decoration: none;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+        }
+        .header-nav a {
+            text-decoration: none;
+            color: var(--text-light);
+            font-weight: 500;
+            padding: 0.5em 1em;
+            border-radius: 8px;
+            margin-left: 0.5em;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .header-nav a:hover { color: var(--text-color); }
+        .header-nav a.active { background-color: var(--bg-color); color: var(--text-color); }
+
+        .header-main, .header-selection {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+        .header-selection {
+            display: none; /* Initially hidden */
+        }
+        .header-selection.active {
+            display: flex;
+        }
+        #selection-count {
+            font-weight: 500;
+            font-size: 1.1em;
+        }
+        .selection-actions { display: flex; align-items: center; gap: 10px; }
+
+        .main-content { padding: 2em; }
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+        .content-section h2 { color: var(--text-color); border-bottom: 2px solid var(--border-color); padding-bottom: 10px; margin-top: 0; }
+        
+        .upload-container { display: flex; justify-content: center; align-items: center; padding: 4em 0; }
+        .upload-label {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 220px;
+            height: 220px;
+            background: var(--bg-color);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            border: 2px dashed var(--border-color);
+        }
+        .upload-label:hover {
+            transform: translateY(-3px);
+            border-color: var(--text-light);
+        }
+        .upload-icon { font-size: 100px; font-weight: 200; color: var(--text-light); line-height: 1; }
+        .upload-label span { margin-top: 10px; font-weight: 500; color: var(--text-light); font-size: 1.2em; }
+
+        #status { font-weight: 500; min-height: 1.2em; transition: color 0.3s; text-align: center; margin-top: 1.5em; }
+        #image-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+        .image-card { background: var(--content-bg); border-radius: 8px; box-shadow: 0 2px 4px var(--shadow-color); overflow: hidden; position: relative; aspect-ratio: 1 / 1; cursor: pointer; }
+        .image-card img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.2s ease-in-out; }
+        .image-card.selected { box-shadow: 0 0 0 3px #007bff; }
+        .image-card:hover img { transform: scale(1.05); }
+        .card-actions { position: absolute; top: 8px; right: 8px; display: flex; align-items: center; background-color: rgba(0, 0, 0, 0.6); border-radius: 14px; padding: 2px; opacity: 0; transition: all 0.2s; z-index: 10; }
+        .image-card:hover .card-actions { opacity: 1; }
+        .action-btn { display: flex; align-items: center; justify-content: center; color: white; background: none; border: none; cursor: pointer; width: 28px; height: 28px; font-size: 1.2em; border-radius: 50%; }
+        .action-btn:hover { background-color: rgba(255,255,255,0.2); }
+        .menu-btn { font-weight: bold; }
+        .delete-btn { font-weight: normal; }
+        .dropdown-menu { position: absolute; top: 40px; right: 8px; background: var(--content-bg); border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); list-style: none; padding: 5px; margin: 0; z-index: 11; display: none; }
+        .dropdown-menu.show { display: block; }
+        .dropdown-menu li { padding: 8px 12px; cursor: pointer; border-radius: 5px; white-space: nowrap; }
+        .dropdown-menu li:hover { background-color: var(--bg-color); }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: none; justify-content: center; align-items: center; z-index: 4000; }
+        .modal-overlay.show { display: flex; }
+        .modal-content { background: var(--content-bg); padding: 1.5em 2em; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.25); text-align: center; }
+        .modal-content h3 { margin-top: 0; }
+        .modal-content p { margin: 0.5em 0 1.5em; }
+        .modal-actions button { border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: 500; margin: 0 5px; }
+        .modal-actions .btn-secondary { background-color: var(--border-color); color: var(--text-color); }
+        .modal-actions .btn-danger { background-color: #dc3545; color: white; }
+        .modal-actions .btn-primary { background-color: #007bff; color: white; }
+        .rename-input-group {
+            display: flex;
+            margin-bottom: 1.5em;
+        }
+        .filename-input {
+            font-size: 1em;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-right: none;
+            border-radius: 5px 0 0 5px;
+            width: 100%;
+            flex-grow: 1;
+        }
+        .filename-extension {
+            padding: 8px;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-left: none;
+            border-radius: 0 5px 5px 0;
+            color: var(--text-light);
+            white-space: nowrap;
+        }
+        .fullscreen-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+            cursor: pointer;
+        }
+        .fullscreen-overlay.show { display: flex; }
+        .fullscreen-image-wrapper {
+            width: 90vw;
+            height: 90vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .fullscreen-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            cursor: default;
+        }
+        .fullscreen-filename {
+            position: absolute;
+            top: 1.5em;
+            left: 1.5em;
+            color: white;
+            font-size: 1.1em;
+            z-index: 3001;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+        }
+        .toast {
+            position: fixed;
+            bottom: 2em;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--text-color);
+            color: var(--sidebar-bg);
+            padding: 1em 1.5em;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+            z-index: 2000;
+            min-width: 300px;
+            max-width: 90%;
+        }
+        .toast.show { opacity: 1; visibility: visible; }
+        .toast-message { margin-right: 1em; }
+        .toast-button { background: none; border: 1px solid var(--text-light); color: var(--sidebar-bg); padding: 0.5em 1em; border-radius: 5px; cursor: pointer; font-weight: 500; white-space: nowrap; }
+        .toast-button:hover { background-color: rgba(255,255,255,0.1); }
+    </style>
+</head>
+<body>
+
+    <header class="top-header">
+        <div class="header-main">
+            <div class="header-title">Microweb Image Framework</div>
+            <nav class="header-nav">
+                <a href="/gallery" id="nav-gallery" class="<%= activeView === 'gallery' ? 'active' : '' %>">Gallery</a>
+                <a href="/upload" id="nav-upload" class="<%= activeView === 'upload' ? 'active' : '' %>">Upload</a>
+            </nav>
+        </div>
+        <div class="header-selection">
+            <button class="action-btn" id="selection-close" title="Clear selection">&times;</button>
+            <span id="selection-count"></span>
+            <div class="selection-actions">
+                <button class="action-btn" id="selection-delete" title="Delete selected">🗑️</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <section id="upload-view" class="content-section <%= activeView === 'upload' ? 'active' : '' %>">
+            <h2>Upload Image</h2>
+            <div class="upload-container">
+                <label for="file-input" class="upload-label" title="Click to upload an image">
+                    <div class="upload-icon">+</div>
+                    <span>Upload</span>
+                </label>
+                <input type="file" id="file-input" name="myImage" accept="image/*" style="display: none;">
+            </div>
+            <div id="status"></div>
+        </section>
+
+        <section id="gallery-view" class="content-section <%= activeView === 'gallery' ? 'active' : '' %>">
+            <h2>Image Gallery</h2>
+            <div id="image-gallery">
+                <%# This EJS block renders the initial list of images on the server %>
+                    <% images.forEach(image => { %> 
+                    <div class="image-card" 
+                         data-filename="<%= image.filename %>" 
+                         data-link="<%= image.link %>"
+                         data-type="<%= image.type %>"
+                         data-resolution="<%= image.width %>x<%= image.height %>"
+                         >
+                        <img src="<%= image.link %>" alt="<%= image.filename %>" onclick="handleCardClick(this.closest('.image-card'))">
+                        <div class="card-actions">
+                            <button class="action-btn menu-btn" onclick="showMenu(event, this.closest('.image-card'))" title="More options">⋮</button>
+                            <button class="action-btn delete-btn" onclick="showDeleteConfirm(event, '<%= image.filename %>')" title="Delete Image">&times;</button>
+                        </div>
+                        <ul class="dropdown-menu">
+                            <li onclick="toggleSelect(event, this.closest('.image-card'))">Select</li>
+                            <li onclick="showRenameModal(event, this.closest('.image-card'))">Rename</li>
+                            <li onclick="showInfo(event, this.closest('.image-card'))">Info</li>
+                        </ul>
+                    </div>
+                <% }); %>
+            </div>
+        </section>
+    </main>
+
+    <div id="fullscreen-overlay" class="fullscreen-overlay">
+        <div id="fullscreen-filename" class="fullscreen-filename"></div>
+        <div class="fullscreen-image-wrapper">
+            <img id="fullscreen-image" class="fullscreen-image" src="">
+        </div>
+    </div>
+
+    <div id="info-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="info-filename"></h3>
+            <p id="info-details"></p>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="hideInfo()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="delete-confirm-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Delete Image</h3>
+            <p>Are you sure you want to delete this image?</p>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="hideDeleteConfirm()">Cancel</button>
+                <button id="delete-confirm-btn" class="btn-danger">Yes, Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="rename-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Rename File</h3>
+            <div class="rename-input-group">
+                <input type="text" id="rename-basename-input" class="filename-input">
+                <span id="rename-extension-span" class="filename-extension"></span>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="hideRenameModal()">Cancel</button>
+                <button id="rename-save-btn" class="btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">
+        <span id="toast-message" class="toast-message"></span>
+        <button id="toast-try-again" class="toast-button">Try Again</button>
+    </div>
+
+    <script>
+        // --- DOM Element References ---
+
+        const fileInput = document.getElementById('file-input');
+        const gallery = document.getElementById('image-gallery');
+        const statusDiv = document.getElementById('status');
+        const navUpload = document.getElementById('nav-upload');
+        const navGallery = document.getElementById('nav-gallery');
+        const uploadView = document.getElementById('upload-view');
+        const galleryView = document.getElementById('gallery-view');
+        const headerMain = document.querySelector('.header-main');
+        const headerSelection = document.querySelector('.header-selection');
+        const selectionCloseBtn = document.getElementById('selection-close');
+        const selectionCount = document.getElementById('selection-count');
+        const selectionDeleteBtn = document.getElementById('selection-delete');
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toast-message');
+        const toastTryAgainBtn = document.getElementById('toast-try-again');
+        const fullscreenOverlay = document.getElementById('fullscreen-overlay');
+        const fullscreenImage = document.getElementById('fullscreen-image');
+        const fullscreenFilename = document.getElementById('fullscreen-filename');
+        const infoModal = document.getElementById('info-modal');
+        const infoFilename = document.getElementById('info-filename');
+        const infoDetails = document.getElementById('info-details');
+        const deleteConfirmModal = document.getElementById('delete-confirm-modal');
+        const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
+        const renameModal = document.getElementById('rename-modal');
+        const renameBasenameInput = document.getElementById('rename-basename-input');
+        const renameSaveBtn = document.getElementById('rename-save-btn');
+        const renameExtensionSpan = document.getElementById('rename-extension-span');
+
+        // --- State Management ---
+        let toastTimeout;
+        // Note: Selection state is managed by adding/removing the '.selected' class to/from '.image-card' elements.
+
+        // --- Navigation Logic ---
+        function showView(viewToShow, pushState = false) {
+            [uploadView, galleryView].forEach(view => view.classList.remove('active'));
+            [navUpload, navGallery].forEach(nav => nav.classList.remove('active'));
+
+            if (viewToShow === 'gallery') {
+                galleryView.classList.add('active');
+                navGallery.classList.add('active');
+                if (pushState) history.pushState({ view: 'gallery' }, '', '/gallery');
+            } else {
+                uploadView.classList.add('active');
+                navUpload.classList.add('active');
+                if (pushState) history.pushState({ view: 'upload' }, '', '/upload');
+            }
+        }
+
+        navUpload.addEventListener('click', (e) => { e.preventDefault(); showView('upload', true); });
+        navGallery.addEventListener('click', (e) => { e.preventDefault(); showView('gallery', true); });
+
+        // Handle browser back/forward button clicks
+        window.addEventListener('popstate', (e) => {
+            const view = e.state?.view || (location.pathname === '/upload' ? 'upload' : 'gallery');
+            showView(view, false);
+        });
+
+        // --- API & Gallery Rendering ---
+        async function refreshGallery() {
+            try {
+                const response = await fetch('/pictures');
+                if (!response.ok) throw new Error('Failed to fetch images.');
+                
+                const images = await response.json();
+                gallery.innerHTML = ''; // Clear the gallery
+
+                images.reverse().forEach(image => { // Show newest first
+                    const card = document.createElement('div');
+                    card.className = 'image-card';
+                    card.innerHTML = `
+                        <img src="${image.link}" alt="${image.filename}" onclick="handleCardClick(this.closest('.image-card'))">
+                        <div class="card-actions">
+                            <button class="action-btn menu-btn" onclick="showMenu(event, this.closest('.image-card'))" title="More options">⋮</button>
+                            <button class="action-btn delete-btn" onclick="showDeleteConfirm(event, '${image.filename}')" title="Delete Image">&times;</button>
+                        </div>
+                        <ul class="dropdown-menu">
+                            <li onclick="toggleSelect(event, this.closest('.image-card'))">Select</li>
+                            <li onclick="showRenameModal(event, this.closest('.image-card'))">Rename</li>
+                            <li onclick="showInfo(event, this.closest('.image-card'))">Info</li>
+                        </ul>
+                    `;
+                    card.dataset.filename = image.filename;
+                    card.dataset.link = image.link;
+                    card.dataset.type = image.type;
+                    card.dataset.resolution = `${image.width}x${image.height}`;
+                    gallery.appendChild(card);
+                });
+            } catch (error) {
+                showToast(error.message);
+            }
+        }
+
+        // --- User Actions (Upload, Delete) ---
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                uploadImage(file);
+            }
+        });
+
+        async function uploadImage(file) {
+            const formData = new FormData();
+            formData.append('myImage', file);
+
+            statusDiv.textContent = 'Uploading...';
+
+            try {
+                const response = await fetch('/pictures', { method: 'POST', body: formData });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.message || 'Upload failed.');
+
+                statusDiv.textContent = '';
+                showToast(result.message);
+                fileInput.value = ''; // Reset file input
+                await refreshGallery();
+                showView('gallery'); // Switch to gallery view after successful upload
+            } catch (error) {
+                statusDiv.textContent = '';
+                showToast(error.message, true);
+                fileInput.value = ''; // Reset on error too
+            }
+        }
+
+        async function executeDelete(event, filename) {
+            event.stopPropagation(); // Prevent the card's click event from firing
+            try {
+                const response = await fetch(`/pictures/${filename}`, { method: 'DELETE' });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.message || 'Deletion failed.');
+                showToast(result.message);
+                await refreshGallery();
+                hideDeleteConfirm();
+            } catch (error) {
+                showToast(error.message);
+            }
+        }
+
+        // --- UI Feedback (Toasts, Modals, Fullscreen) ---
+
+        function showToast(message, showTryAgain = false) {
+            clearTimeout(toastTimeout); // Clear any existing timer
+
+            toastMessage.textContent = message;
+            toastTryAgainBtn.style.display = showTryAgain ? 'block' : 'none';
+            
+            toast.classList.add('show');
+
+            if (!showTryAgain) {
+                toastTimeout = setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 5000);
+            }
+        }
+
+        toastTryAgainBtn.addEventListener('click', () => {
+            toast.classList.remove('show');
+            fileInput.click(); // Re-open file dialog
+        });
+
+        function handleCardClick(card) {
+            const selectionActive = document.querySelectorAll('.image-card.selected').length > 0;
+            if (selectionActive) {
+                card.classList.toggle('selected');
+                updateSelectionUI();
+            } else {
+                showFullscreen(card);
+            }
+        }
+
+        function showFullscreen(card) {
+            fullscreenImage.src = card.dataset.link;
+            fullscreenFilename.textContent = card.dataset.filename;
+            fullscreenOverlay.classList.add('show');
+        }
+
+        function hideFullscreen() {
+            fullscreenOverlay.classList.remove('show');
+            fullscreenImage.src = ''; // Clear src to stop video/gif playback
+            fullscreenFilename.textContent = '';
+        }
+
+        // --- Fullscreen Exit Logic ---
+        fullscreenOverlay.addEventListener('click', (e) => {
+            // Hide if the click is on the overlay itself, but not on the image or filename.
+            // This correctly handles clicks in the "empty" space around the image.
+            if (e.target !== fullscreenImage && e.target !== fullscreenFilename) {
+                hideFullscreen();
+            }
+        });
+
+        // --- Menu, Modal, and Selection Logic ---
+        function showMenu(event, card) {
+            event.stopPropagation();
+            hideAllMenus(); // Close other menus
+            const menu = card.querySelector('.dropdown-menu');
+            menu.classList.add('show');
+        }
+
+        function hideAllMenus() {
+            document.querySelectorAll('.dropdown-menu.show').forEach(menu => menu.classList.remove('show'));
+        }
+
+        function showInfo(event, card) {
+            event.stopPropagation();
+            infoFilename.textContent = card.dataset.filename;
+            infoDetails.textContent = `Type: ${card.dataset.type} • Resolution: ${card.dataset.resolution}`;
+
+            infoModal.classList.add('show');
+            hideAllMenus();
+        }
+
+        function hideInfo() {
+            infoModal.classList.remove('show');
+        }
+
+        function showRenameModal(event, card) {
+            event.stopPropagation();
+            const oldFilename = card.dataset.filename;
+
+            // Use a regex to reliably separate the basename from a known image extension.
+            const extensionRegex = /\.(jpeg|jpg|png|gif|svg)$/i;
+            const match = oldFilename.match(extensionRegex);
+
+            let basename;
+            let extension;
+
+            if (match) {
+                extension = match[0]; // e.g., ".jpg"
+                basename = oldFilename.substring(0, oldFilename.length - extension.length);
+            } else {
+                // If no known extension is found, treat the whole string as the basename.
+                extension = '';
+                basename = oldFilename;
+            }
+
+            // Populate the new input fields
+            renameBasenameInput.value = basename;
+            renameExtensionSpan.textContent = extension;
+
+            renameModal.classList.add('show');
+            hideAllMenus();
+            // Set up the save button to call executeRename
+            renameSaveBtn.onclick = () => executeRename();
+            // Store the old filename and original extension on the modal so the 'Enter' key listener and save function can use it
+            renameModal.dataset.oldFilename = oldFilename;
+            renameModal.dataset.originalExtension = extension;
+        }
+
+        function hideRenameModal() {
+            renameModal.classList.remove('show');
+        }
+
+        async function executeRename() {
+            const oldFilename = renameModal.dataset.oldFilename;
+            const extension = renameModal.dataset.originalExtension;
+            const newBasename = renameBasenameInput.value.trim();
+            
+            if (!newBasename) {
+                showToast('Filename cannot be empty.');
+                return;
+            }
+
+            const newFilename = newBasename + extension;
+
+            if (newFilename === oldFilename) {
+                hideRenameModal(); // No change, just close modal
+                return;
+            }
+
+            try {
+                const response = await fetch(`/pictures/${encodeURIComponent(oldFilename)}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ newFilename })
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.message || 'Failed to update filename.');
+                
+                showToast(result.message);
+                hideRenameModal();
+                await refreshGallery();
+            } catch (error) {
+                showToast(`Error: ${error.message || 'Could not connect to server.'}`);
+            }
+        }
+
+        function showDeleteConfirm(event, filename) {
+            event.stopPropagation();
+            deleteConfirmModal.classList.add('show');
+            deleteConfirmBtn.onclick = (e) => executeDelete(e, filename);
+        }
+
+        function hideDeleteConfirm() {
+            deleteConfirmModal.classList.remove('show');
+            // Reset text to default
+            deleteConfirmModal.querySelector('p').textContent = 'Are you sure you want to delete this image?';
+        }
+
+        function toggleSelect(event, card) {
+            event.stopPropagation();
+            card.classList.toggle('selected');
+            hideAllMenus();
+            updateSelectionUI();
+        }
+
+        // Updates the top header to show either the main navigation or the selection bar.
+        function updateSelectionUI() {
+            const selectedCards = document.querySelectorAll('.image-card.selected');
+            const selectionActive = selectedCards.length > 0;
+
+            if (selectionActive) {
+                headerMain.style.display = 'none';
+                headerSelection.style.display = 'flex';
+                selectionCount.textContent = `${selectedCards.length} selected`;
+            } else {
+                headerMain.style.display = 'flex';
+                headerSelection.style.display = 'none';
+            }
+        }
+
+        function deselectAll() {
+            document.querySelectorAll('.image-card.selected').forEach(card => {
+                card.classList.remove('selected');
+            });
+            updateSelectionUI();
+        }
+
+        // Deletes all currently selected images.
+        async function deleteSelected() {
+            const selectedCards = document.querySelectorAll('.image-card.selected');
+            if (selectedCards.length === 0) return;
+
+            const filenames = Array.from(selectedCards).map(card => card.dataset.filename);
+            
+            const deleteModalText = deleteConfirmModal.querySelector('p');
+            deleteModalText.textContent = `Are you sure you want to delete these ${filenames.length} images?`;
+            
+            showDeleteConfirm(event, null); // Show modal without a specific filename
+            deleteConfirmBtn.onclick = async () => {
+                const deletePromises = filenames.map(filename => 
+                    fetch(`/pictures/${encodeURIComponent(filename)}`, { method: 'DELETE' })
+                );
+
+                try {
+                    await Promise.all(deletePromises);
+                    showToast(`${filenames.length} image(s) deleted successfully.`);
+                    await refreshGallery();
+                    deselectAll();
+                } catch (error) {
+                    showToast(`Error: ${error.message}`);
+                } finally {
+                    hideDeleteConfirm();
+                }
+            };
+        }
+
+        // --- Global Event Listeners ---
+
+        // Close menus when clicking anywhere else
+        document.addEventListener('click', hideAllMenus);
+
+        // Add event listeners for selection bar
+        selectionCloseBtn.addEventListener('click', deselectAll);
+        selectionDeleteBtn.addEventListener('click', deleteSelected);
+
+        // Add event listener for 'Enter' key in rename modal
+        renameBasenameInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Prevent any default form submission behavior
+                renameSaveBtn.click(); // Programmatically click the save button
+            }
+        });
+    </script>
+
+</body>
+</html>

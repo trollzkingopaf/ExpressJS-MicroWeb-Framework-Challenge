@@ -1,0 +1,63 @@
+<!-- This is the splash/welcome screen for first-time visitors. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome - Microweb Image Framework</title>
+    <style>
+        :root {
+            --bg-color: #f4f4f9;
+            --text-color: #333333;
+            --button-bg: #ffffff;
+            --button-shadow: rgba(0,0,0,0.08);
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            text-align: center;
+        }
+        .welcome-container {
+            max-width: 600px;
+        }
+        .welcome-title {
+            font-size: 3em;
+            font-weight: 300;
+            margin-bottom: 0.5em;
+        }
+        .welcome-subtitle {
+            font-size: 1.2em;
+            color: #777;
+            margin-bottom: 2em;
+        }
+        .welcome-button {
+            display: inline-block;
+            text-decoration: none;
+            color: var(--text-color);
+            background: var(--button-bg);
+            padding: 1em 2.5em;
+            border-radius: 50px;
+            font-weight: 500;
+            box-shadow: 0 5px 15px var(--button-shadow);
+            transition: all 0.2s ease-in-out;
+        }
+        .welcome-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        }
+    </style>
+</head>
+<body>
+    <div class="welcome-container">
+        <h1 class="welcome-title">Microweb Image Framework</h1>
+        <p class="welcome-subtitle"></p>
+        <a href="/gallery" class="welcome-button">Let's Go</a>
+    </div>
+</body>
+</html>
