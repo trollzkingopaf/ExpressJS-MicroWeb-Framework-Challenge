@@ -68,6 +68,124 @@
         }
         .selection-actions { display: flex; align-items: center; gap: 10px; }
 
+        .header-text-btn {
+            background: none;
+            border: none;
+            color: var(--text-light);
+            font-family: inherit;
+            font-size: 1em;
+            font-weight: 500;
+            padding: 0.5em 1em;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .header-text-btn:hover {
+            color: var(--text-color);
+            background-color: var(--bg-color);
+        }
+        .header-text-btn.danger:hover {
+            color: #c53030; /* A darker red */
+            background-color: #fdf2f2; /* A very light red */
+        }
+        .conflict-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 1em;
+            margin-top: 1.5em;
+            padding-top: 1.5em;
+            border-top: 1px solid var(--border-color);
+            align-items: center;
+        }
+        .conflict-actions .rename-input-group {
+            margin-bottom: 0.5em;
+            width: 100%;
+        }
+.conflict-actions > button {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    transition: background-color 0.2s;
+    width: 35%;
+}
+.conflict-actions > button:hover {
+    background-color: var(--border-color);
+}
+
+        .info-link-container {
+            margin-top: 1.5em;
+            padding-top: 1em;
+            border-top: 1px solid var(--border-color);
+            text-align: left;
+        }
+        .info-link-container p { margin: 0 0 0.5em; }
+        .info-link-container a {
+            color: #007bff;
+            text-decoration: none;
+            word-break: break-all;
+        }
+        .info-link-container a:hover { text-decoration: underline; }
+
+        .fullscreen-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+            cursor: pointer;
+        }
+        .fullscreen-overlay.show { display: flex; }
+
+        .fullscreen-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 1.5em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 3001;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+            pointer-events: none; /* Allow clicks to pass through header to overlay */
+        }
+        .fullscreen-filename {
+            color: white;
+            font-size: 1.1em;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding-right: 1em;
+        }
+        .fullscreen-action-btn {
+            color: white;
+            text-decoration: none;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+            flex-shrink: 0;
+            pointer-events: auto; /* Make button clickable */
+        }
+        .fullscreen-action-btn:hover { opacity: 1; }
+        .fullscreen-image-wrapper {
+            width: 90vw;
+            height: 90vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .fullscreen-image {
+            /* Sizing is now handled by JS to ensure correct click area */
+            cursor: default;
+            max-width: 100%; /* Fallback for large images */
+            max-height: 100%; /* Fallback for large images */
+        }
+
         .main-content { padding: 2em; }
         .content-section { display: none; }
         .content-section.active { display: block; }
@@ -112,13 +230,14 @@
         .dropdown-menu li:hover { background-color: var(--bg-color); }
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: none; justify-content: center; align-items: center; z-index: 4000; }
         .modal-overlay.show { display: flex; }
-        .modal-content { background: var(--content-bg); padding: 1.5em 2em; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.25); text-align: center; }
+.modal-content { background: var(--content-bg); padding: 1.5em 2em; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.25); text-align: center; max-width: 400px; width: 90%; }
         .modal-content h3 { margin-top: 0; }
         .modal-content p { margin: 0.5em 0 1.5em; }
-        .modal-actions button { border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: 500; margin: 0 5px; }
-        .modal-actions .btn-secondary { background-color: var(--border-color); color: var(--text-color); }
-        .modal-actions .btn-danger { background-color: #dc3545; color: white; }
-        .modal-actions .btn-primary { background-color: #007bff; color: white; }
+.modal-actions { display: flex; justify-content: center; gap: 10px; }
+.modal-actions button, .conflict-actions button, .replace-control button { border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 500; }
+.btn-secondary { background-color: var(--border-color); color: var(--text-color); }
+.btn-danger { background-color: #dc3545; color: white; }
+.btn-primary { background-color: #007bff; color: white; }
         .rename-input-group {
             display: flex;
             margin-bottom: 1.5em;
@@ -128,7 +247,7 @@
             padding: 8px;
             border: 1px solid var(--border-color);
             border-right: none;
-            border-radius: 5px 0 0 5px;
+            border-radius: 8px 0 0 8px;
             width: 100%;
             flex-grow: 1;
         }
@@ -137,45 +256,9 @@
             background-color: var(--bg-color);
             border: 1px solid var(--border-color);
             border-left: none;
-            border-radius: 0 5px 5px 0;
+            border-radius: 0 8px 8px 0;
             color: var(--text-light);
             white-space: nowrap;
-        }
-        .fullscreen-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 3000;
-            cursor: pointer;
-        }
-        .fullscreen-overlay.show { display: flex; }
-        .fullscreen-image-wrapper {
-            width: 90vw;
-            height: 90vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .fullscreen-image {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-            cursor: default;
-        }
-        .fullscreen-filename {
-            position: absolute;
-            top: 1.5em;
-            left: 1.5em;
-            color: white;
-            font-size: 1.1em;
-            z-index: 3001;
-            text-shadow: 0 1px 4px rgba(0,0,0,0.7);
         }
         .toast {
             position: fixed;
@@ -193,7 +276,7 @@
             opacity: 0;
             visibility: hidden;
             transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
-            z-index: 2000;
+            z-index: 5000;
             min-width: 300px;
             max-width: 90%;
         }
@@ -217,7 +300,8 @@
             <button class="action-btn" id="selection-close" title="Clear selection">&times;</button>
             <span id="selection-count"></span>
             <div class="selection-actions">
-                <button class="action-btn" id="selection-delete" title="Delete selected">🗑️</button>
+                <button id="select-all-btn" class="header-text-btn" title="Select all images (Ctrl+A)">Select All</button>
+                <button class="header-text-btn danger" id="selection-delete" title="Delete selected">Delete</button>
             </div>
         </div>
     </header>
@@ -230,7 +314,7 @@
                     <div class="upload-icon">+</div>
                     <span>Upload</span>
                 </label>
-                <input type="file" id="file-input" name="myImage" accept="image/*" style="display: none;">
+                <input type="file" id="file-input" name="myImage" accept="image/*,.zip,.tar,.gz,.7z,application/zip,application/x-tar,application/gzip,application/x-7z-compressed" multiple style="display: none;">
             </div>
             <div id="status"></div>
         </section>
@@ -240,21 +324,23 @@
             <div id="image-gallery">
                 <%# This EJS block renders the initial list of images on the server %>
                     <% images.forEach(image => { %> 
-                    <div class="image-card" 
-                         data-filename="<%= image.filename %>" 
+                    <div class="image-card"
+                         data-id="<%= image.id %>"
+                         data-filename="<%= image.displayName %>" 
                          data-link="<%= image.link %>"
                          data-type="<%= image.type %>"
                          data-resolution="<%= image.width %>x<%= image.height %>"
                          >
-                        <img src="<%= image.link %>" alt="<%= image.filename %>" onclick="handleCardClick(this.closest('.image-card'))">
+                        <img src="<%= image.link %>" alt="<%= image.displayName %>">
                         <div class="card-actions">
-                            <button class="action-btn menu-btn" onclick="showMenu(event, this.closest('.image-card'))" title="More options">⋮</button>
-                            <button class="action-btn delete-btn" onclick="showDeleteConfirm(event, '<%= image.filename %>')" title="Delete Image">&times;</button>
+                            <button class="action-btn menu-btn" data-action="menu" title="More options">⋮</button>
+                            <button class="action-btn delete-btn" data-action="delete" title="Delete Image">&times;</button>
                         </div>
                         <ul class="dropdown-menu">
-                            <li onclick="toggleSelect(event, this.closest('.image-card'))">Select</li>
-                            <li onclick="showRenameModal(event, this.closest('.image-card'))">Rename</li>
-                            <li onclick="showInfo(event, this.closest('.image-card'))">Info</li>
+                            <li data-action="select">Select</li>
+                            <li data-action="rename">Rename</li>
+                            <li data-action="download">Download</li>
+                            <li data-action="info">Info</li>
                         </ul>
                     </div>
                 <% }); %>
@@ -263,7 +349,12 @@
     </main>
 
     <div id="fullscreen-overlay" class="fullscreen-overlay">
-        <div id="fullscreen-filename" class="fullscreen-filename"></div>
+        <div class="fullscreen-header">
+            <span id="fullscreen-filename" class="fullscreen-filename"></span>
+            <a id="fullscreen-open-link" href="#" target="_blank" class="fullscreen-action-btn" title="Open image in new tab">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V3h4M21 7V3h-4M3 17v4h4M21 17v4h-4"></path></svg>
+            </a>
+        </div>
         <div class="fullscreen-image-wrapper">
             <img id="fullscreen-image" class="fullscreen-image" src="">
         </div>
@@ -304,6 +395,23 @@
         </div>
     </div>
 
+    <div id="conflict-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>File Conflict</h3>
+            <p>A file named <strong id="conflict-filename"></strong> already exists.</p>
+            
+            <div class="conflict-actions">
+                <div class="rename-input-group">
+                    <input type="text" id="conflict-basename-input" class="filename-input" placeholder="Enter new name...">
+                    <span id="conflict-extension-span" class="filename-extension"></span>
+                </div>
+                <button id="conflict-rename-btn" class="btn-primary">Replace</button>
+                <button id="conflict-overwrite-btn" class="btn-danger">Overwrite</button>
+                <button id="conflict-skip-btn" class="btn-secondary">Skip</button>
+            </div>
+        </div>
+    </div>
+
     <div id="toast" class="toast">
         <span id="toast-message" class="toast-message"></span>
         <button id="toast-try-again" class="toast-button">Try Again</button>
@@ -324,12 +432,14 @@
         const selectionCloseBtn = document.getElementById('selection-close');
         const selectionCount = document.getElementById('selection-count');
         const selectionDeleteBtn = document.getElementById('selection-delete');
+        const selectAllBtn = document.getElementById('select-all-btn');
         const toast = document.getElementById('toast');
         const toastMessage = document.getElementById('toast-message');
         const toastTryAgainBtn = document.getElementById('toast-try-again');
         const fullscreenOverlay = document.getElementById('fullscreen-overlay');
         const fullscreenImage = document.getElementById('fullscreen-image');
         const fullscreenFilename = document.getElementById('fullscreen-filename');
+        const fullscreenOpenLink = document.getElementById('fullscreen-open-link');
         const infoModal = document.getElementById('info-modal');
         const infoFilename = document.getElementById('info-filename');
         const infoDetails = document.getElementById('info-details');
@@ -339,9 +449,16 @@
         const renameBasenameInput = document.getElementById('rename-basename-input');
         const renameSaveBtn = document.getElementById('rename-save-btn');
         const renameExtensionSpan = document.getElementById('rename-extension-span');
+        const conflictModal = document.getElementById('conflict-modal');
+        const conflictFilename = document.getElementById('conflict-filename');
+        const conflictBasenameInput = document.getElementById('conflict-basename-input');
+        const conflictExtensionSpan = document.getElementById('conflict-extension-span');
+        const conflictRenameBtn = document.getElementById('conflict-rename-btn');
+        const conflictOverwriteBtn = document.getElementById('conflict-overwrite-btn');
+        const conflictSkipBtn = document.getElementById('conflict-skip-btn');
 
         // --- State Management ---
-        let toastTimeout;
+        let toastTimeout, conflictQueue = [];
         // Note: Selection state is managed by adding/removing the '.selected' class to/from '.image-card' elements.
 
         // --- Navigation Logic ---
@@ -378,22 +495,24 @@
                 const images = await response.json();
                 gallery.innerHTML = ''; // Clear the gallery
 
-                images.reverse().forEach(image => { // Show newest first
+                images.forEach(image => { // The API returns images sorted newest first
                     const card = document.createElement('div');
                     card.className = 'image-card';
                     card.innerHTML = `
-                        <img src="${image.link}" alt="${image.filename}" onclick="handleCardClick(this.closest('.image-card'))">
+                        <img src="${image.link}" alt="${image.displayName}">
                         <div class="card-actions">
-                            <button class="action-btn menu-btn" onclick="showMenu(event, this.closest('.image-card'))" title="More options">⋮</button>
-                            <button class="action-btn delete-btn" onclick="showDeleteConfirm(event, '${image.filename}')" title="Delete Image">&times;</button>
+                            <button class="action-btn menu-btn" data-action="menu" title="More options">⋮</button>
+                            <button class="action-btn delete-btn" data-action="delete" title="Delete Image">&times;</button>
                         </div>
                         <ul class="dropdown-menu">
-                            <li onclick="toggleSelect(event, this.closest('.image-card'))">Select</li>
-                            <li onclick="showRenameModal(event, this.closest('.image-card'))">Rename</li>
-                            <li onclick="showInfo(event, this.closest('.image-card'))">Info</li>
+                            <li data-action="select">Select</li>
+                            <li data-action="rename">Rename</li>
+                            <li data-action="download">Download</li>
+                            <li data-action="info">Info</li>
                         </ul>
                     `;
-                    card.dataset.filename = image.filename;
+                    card.dataset.id = image.id;
+                    card.dataset.filename = image.displayName;
                     card.dataset.link = image.link;
                     card.dataset.type = image.type;
                     card.dataset.resolution = `${image.width}x${image.height}`;
@@ -407,28 +526,43 @@
         // --- User Actions (Upload, Delete) ---
 
         fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                uploadImage(file);
+            const files = e.target.files;
+            if (files.length > 0) {
+                uploadFiles(files);
             }
         });
 
-        async function uploadImage(file) {
+        async function uploadFiles(files) {
             const formData = new FormData();
-            formData.append('myImage', file);
+            for (const file of files) {
+                formData.append('myImage', file); // Key must match multer's field name
+            }
 
-            statusDiv.textContent = 'Uploading...';
+            statusDiv.textContent = `Uploading ${files.length} file(s)...`;
 
             try {
                 const response = await fetch('/pictures', { method: 'POST', body: formData });
-                const result = await response.json();
-                if (!response.ok) throw new Error(result.message || 'Upload failed.');
+                // Status 207 means partial success (e.g., with conflicts)
+                if (!response.ok && response.status !== 207) {
+                    const errorResult = await response.json().catch(() => ({ message: 'Upload failed with an unknown error.' }));
+                    throw new Error(errorResult.message);
+                }
 
+                const result = await response.json();
                 statusDiv.textContent = '';
-                showToast(result.message);
                 fileInput.value = ''; // Reset file input
-                await refreshGallery();
-                showView('gallery'); // Switch to gallery view after successful upload
+
+                if (result.successful && result.successful.length > 0) {
+                    await refreshGallery();
+                }
+
+                if (result.conflicts && result.conflicts.length > 0) {
+                    showToast(result.message);
+                    handleConflicts(result.conflicts);
+                } else {
+                    showToast(result.message);
+                    showView('gallery', true);
+                }
             } catch (error) {
                 statusDiv.textContent = '';
                 showToast(error.message, true);
@@ -436,13 +570,18 @@
             }
         }
 
-        async function executeDelete(event, filename) {
+        async function executeDelete(event, card) {
             event.stopPropagation(); // Prevent the card's click event from firing
+            const id = card.dataset.id;
             try {
-                const response = await fetch(`/pictures/${filename}`, { method: 'DELETE' });
+                const response = await fetch(`/pictures`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids: [id] })
+                });
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.message || 'Deletion failed.');
-                showToast(result.message);
+                showToast('1 image deleted successfully.');
                 await refreshGallery();
                 hideDeleteConfirm();
             } catch (error) {
@@ -483,29 +622,56 @@
         }
 
         function showFullscreen(card) {
-            fullscreenImage.src = card.dataset.link;
+            // Set text/links immediately
             fullscreenFilename.textContent = card.dataset.filename;
+            fullscreenOpenLink.href = card.dataset.link;
+
+            // Set the src on the actual image element so it starts loading
+            fullscreenImage.src = card.dataset.link;
+
+            // Use an in-memory image to calculate dimensions once it's loaded
+            const tempImg = new Image();
+            tempImg.onload = () => {
+                const wrapper = document.querySelector('.fullscreen-image-wrapper');
+                const maxWidth = wrapper.clientWidth;
+                const maxHeight = wrapper.clientHeight;
+
+                // This ratio determines how much to scale the image to fit the container
+                const ratio = Math.min(maxWidth / tempImg.naturalWidth, maxHeight / tempImg.naturalHeight);
+
+                // Apply the scaled dimensions. This will "zoom in" smaller images.
+                fullscreenImage.style.width = `${tempImg.naturalWidth * ratio}px`;
+                fullscreenImage.style.height = `${tempImg.naturalHeight * ratio}px`;
+            };
+            tempImg.src = card.dataset.link; // Trigger the load
+
             fullscreenOverlay.classList.add('show');
         }
 
         function hideFullscreen() {
             fullscreenOverlay.classList.remove('show');
             fullscreenImage.src = ''; // Clear src to stop video/gif playback
+            fullscreenImage.style.width = 'auto';
+            fullscreenImage.style.height = 'auto';
             fullscreenFilename.textContent = '';
+            fullscreenOpenLink.href = '#';
         }
 
-        // --- Fullscreen Exit Logic ---
         fullscreenOverlay.addEventListener('click', (e) => {
-            // Hide if the click is on the overlay itself, but not on the image or filename.
-            // This correctly handles clicks in the "empty" space around the image.
-            if (e.target !== fullscreenImage && e.target !== fullscreenFilename) {
+            // Hide if the click is on the overlay itself, but not on the image or the action button/link
+            if (e.target.closest('.fullscreen-action-btn') || e.target === fullscreenImage) {
+                return;
+            }
+            hideFullscreen();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && fullscreenOverlay.classList.contains('show')) {
                 hideFullscreen();
             }
         });
-
         // --- Menu, Modal, and Selection Logic ---
-        function showMenu(event, card) {
-            event.stopPropagation();
+        function showMenu(card) {
             hideAllMenus(); // Close other menus
             const menu = card.querySelector('.dropdown-menu');
             menu.classList.add('show');
@@ -515,11 +681,9 @@
             document.querySelectorAll('.dropdown-menu.show').forEach(menu => menu.classList.remove('show'));
         }
 
-        function showInfo(event, card) {
-            event.stopPropagation();
+        function showInfo(card) {
             infoFilename.textContent = card.dataset.filename;
             infoDetails.textContent = `Type: ${card.dataset.type} • Resolution: ${card.dataset.resolution}`;
-
             infoModal.classList.add('show');
             hideAllMenus();
         }
@@ -528,8 +692,7 @@
             infoModal.classList.remove('show');
         }
 
-        function showRenameModal(event, card) {
-            event.stopPropagation();
+        function showRenameModal(card) {
             const oldFilename = card.dataset.filename;
 
             // Use a regex to reliably separate the basename from a known image extension.
@@ -555,9 +718,8 @@
             renameModal.classList.add('show');
             hideAllMenus();
             // Set up the save button to call executeRename
-            renameSaveBtn.onclick = () => executeRename();
+            renameSaveBtn.onclick = () => executeRename(card.dataset.id);
             // Store the old filename and original extension on the modal so the 'Enter' key listener and save function can use it
-            renameModal.dataset.oldFilename = oldFilename;
             renameModal.dataset.originalExtension = extension;
         }
 
@@ -565,8 +727,7 @@
             renameModal.classList.remove('show');
         }
 
-        async function executeRename() {
-            const oldFilename = renameModal.dataset.oldFilename;
+        async function executeRename(id) {
             const extension = renameModal.dataset.originalExtension;
             const newBasename = renameBasenameInput.value.trim();
             
@@ -577,13 +738,13 @@
 
             const newFilename = newBasename + extension;
 
-            if (newFilename === oldFilename) {
+            if (newFilename === document.querySelector(`.image-card[data-id="${id}"]`).dataset.filename) {
                 hideRenameModal(); // No change, just close modal
                 return;
             }
 
             try {
-                const response = await fetch(`/pictures/${encodeURIComponent(oldFilename)}`, {
+                const response = await fetch(`/pictures/${id}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ newFilename })
@@ -599,10 +760,81 @@
             }
         }
 
-        function showDeleteConfirm(event, filename) {
-            event.stopPropagation();
+        // --- Conflict Resolution Logic ---
+
+        function handleConflicts(conflicts) {
+            conflictQueue = conflicts;
+            processNextConflict();
+        }
+
+        function processNextConflict() {
+            if (conflictQueue.length === 0) {
+                refreshGallery();
+                showView('gallery', true);
+                return;
+            }
+            const conflict = conflictQueue.shift();
+            showConflictModal(conflict);
+        }
+
+        function showConflictModal(conflict) {
+            const { originalFilename, tempPath, existingId } = conflict;
+            conflictFilename.textContent = originalFilename;
+
+            const extensionRegex = /\.[^.]+$/;
+            const match = originalFilename.match(extensionRegex);
+            const extension = match ? match[0] : '';
+            const basename = originalFilename.replace(extensionRegex, '');
+
+            conflictBasenameInput.value = `${basename} (1)`;
+            conflictExtensionSpan.textContent = extension;
+
+            // Show/hide overwrite button based on whether there's an existing image to overwrite.
+            // If existingId is null, it's a duplicate within the same upload batch.
+            if (existingId) {
+                conflictOverwriteBtn.style.display = 'inline-block';
+            } else {
+                conflictOverwriteBtn.style.display = 'none';
+            }
+
+            conflictModal.classList.add('show');
+
+            // Wire up buttons for the current conflict
+            conflictSkipBtn.onclick = () => resolveConflict('skip', { tempPath, originalFilename });
+            conflictOverwriteBtn.onclick = () => resolveConflict('overwrite', { tempPath, existingId });
+            conflictRenameBtn.onclick = () => {
+                const newBasename = conflictBasenameInput.value.trim();
+                if (!newBasename) return showToast('New filename cannot be empty.');
+                const newFilename = newBasename + extension;
+                resolveConflict('rename', { tempPath, newFilename, originalFilename });
+            };
+        }
+
+        function hideConflictModal() {
+            conflictModal.classList.remove('show');
+        }
+
+        async function resolveConflict(action, data) {
+            try {
+                const response = await fetch('/pictures/resolve-conflict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action, ...data })
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.message);
+                showToast(result.message);
+                hideConflictModal();
+                processNextConflict(); // Move to the next conflict in the queue
+            } catch (error) {
+                showToast(`Error: ${error.message}`);
+            }
+        }
+
+        function showDeleteConfirm(card) {
             deleteConfirmModal.classList.add('show');
-            deleteConfirmBtn.onclick = (e) => executeDelete(e, filename);
+            // Pass the card to the delete function
+            deleteConfirmBtn.onclick = (e) => executeDelete(e, card);
         }
 
         function hideDeleteConfirm() {
@@ -611,8 +843,7 @@
             deleteConfirmModal.querySelector('p').textContent = 'Are you sure you want to delete this image?';
         }
 
-        function toggleSelect(event, card) {
-            event.stopPropagation();
+        function toggleSelect(card) {
             card.classList.toggle('selected');
             hideAllMenus();
             updateSelectionUI();
@@ -620,6 +851,7 @@
 
         // Updates the top header to show either the main navigation or the selection bar.
         function updateSelectionUI() {
+            const allCards = document.querySelectorAll('.image-card');
             const selectedCards = document.querySelectorAll('.image-card.selected');
             const selectionActive = selectedCards.length > 0;
 
@@ -627,6 +859,15 @@
                 headerMain.style.display = 'none';
                 headerSelection.style.display = 'flex';
                 selectionCount.textContent = `${selectedCards.length} selected`;
+
+                // Dynamically change the "Select All" button
+                if (allCards.length > 0 && selectedCards.length === allCards.length) {
+                    selectAllBtn.textContent = 'Unselect All';
+                    selectAllBtn.title = 'Unselect all images';
+                } else {
+                    selectAllBtn.textContent = 'Select All';
+                    selectAllBtn.title = 'Select all images (Ctrl+A)';
+                }
             } else {
                 headerMain.style.display = 'flex';
                 headerSelection.style.display = 'none';
@@ -640,25 +881,36 @@
             updateSelectionUI();
         }
 
+        function selectAll() {
+            // Only works if gallery is active
+            if (!galleryView.classList.contains('active')) return;
+            document.querySelectorAll('.image-card').forEach(card => card.classList.add('selected'));
+            updateSelectionUI();
+        }
+
         // Deletes all currently selected images.
         async function deleteSelected() {
             const selectedCards = document.querySelectorAll('.image-card.selected');
             if (selectedCards.length === 0) return;
 
-            const filenames = Array.from(selectedCards).map(card => card.dataset.filename);
+            const ids = Array.from(selectedCards).map(card => card.dataset.id);
             
             const deleteModalText = deleteConfirmModal.querySelector('p');
-            deleteModalText.textContent = `Are you sure you want to delete these ${filenames.length} images?`;
+            deleteModalText.textContent = `Are you sure you want to delete these ${ids.length} images?`;
             
-            showDeleteConfirm(event, null); // Show modal without a specific filename
+            showDeleteConfirm({ dataset: {} }); // Show modal without a specific card
             deleteConfirmBtn.onclick = async () => {
-                const deletePromises = filenames.map(filename => 
-                    fetch(`/pictures/${encodeURIComponent(filename)}`, { method: 'DELETE' })
-                );
-
                 try {
-                    await Promise.all(deletePromises);
-                    showToast(`${filenames.length} image(s) deleted successfully.`);
+                    const response = await fetch('/pictures', {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ids })
+                    });
+                    if (!response.ok) {
+                        const errResult = await response.json();
+                        throw new Error(errResult.message || 'Bulk delete failed.');
+                    }
+                    showToast(`${ids.length} image(s) deleted successfully.`);
                     await refreshGallery();
                     deselectAll();
                 } catch (error) {
@@ -671,18 +923,124 @@
 
         // --- Global Event Listeners ---
 
+        // Use event delegation for all actions within the gallery
+        gallery.addEventListener('click', (e) => {
+            const card = e.target.closest('.image-card');
+            if (!card) return;
+
+            const action = e.target.dataset.action;
+
+            // If the click was on the image itself (which has no action), or the card background
+            if (!action) {
+                handleCardClick(card);
+                return;
+            }
+
+            // Stop propagation to prevent the card click handler from firing
+            e.stopPropagation();
+
+            switch (action) {
+                case 'menu': showMenu(card); break;
+                case 'delete': showDeleteConfirm(card); break;
+                case 'select': toggleSelect(card); break;
+                case 'rename': showRenameModal(card); break;
+                case 'download': downloadImage(card); break;
+                case 'info': showInfo(card); break;
+            }
+        });
+
+        async function downloadImage(card) {
+            hideAllMenus();
+            const url = card.dataset.link;
+            const filename = card.dataset.filename;
+
+            // Modern approach: File System Access API (Chrome, Edge, etc.)
+            // This will always show a file explorer pop-up.
+            if ('showSaveFilePicker' in window) {
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error('Network response was not ok.');
+
+                    const blob = await response.blob();
+                    const mimeType = blob.type || 'application/octet-stream';
+
+                    // Extract extension from filename to suggest in the picker
+                    const lastDot = filename.lastIndexOf('.');
+                    const fileExtension = (lastDot > 0) ? filename.substring(lastDot) : '';
+
+                    const pickerOpts = {
+                        suggestedName: filename,
+                        types: [{
+                            description: 'Image File', // A more generic description is more reliable
+                            accept: { [mimeType]: [fileExtension] }
+                        }]
+                    };
+
+                    const handle = await window.showSaveFilePicker(pickerOpts);
+                    const writable = await handle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+
+                    showToast('Image downloaded successfully.');
+                } catch (err) {
+                    // This error is thrown if the user cancels the file picker.
+                    if (err.name !== 'AbortError') {
+                        console.error('Failed to download image:', err);
+                        showToast('Failed to download image.', true);
+                    }
+                }
+            } else {
+                // Fallback for Firefox, Safari, etc.
+                // This behavior depends on the user's browser settings.
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+
         // Close menus when clicking anywhere else
         document.addEventListener('click', hideAllMenus);
+
 
         // Add event listeners for selection bar
         selectionCloseBtn.addEventListener('click', deselectAll);
         selectionDeleteBtn.addEventListener('click', deleteSelected);
+        selectAllBtn.addEventListener('click', () => {
+            if (selectAllBtn.textContent === 'Select All') {
+                selectAll();
+            } else {
+                deselectAll();
+            }
+        });
 
         // Add event listener for 'Enter' key in rename modal
         renameBasenameInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
-                e.preventDefault(); // Prevent any default form submission behavior
+                e.preventDefault();
                 renameSaveBtn.click(); // Programmatically click the save button
+            }
+        });
+
+        // Add event listener for Ctrl+A to select/unselect all
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'a') {
+                // Don't hijack the shortcut if user is typing in an input
+                if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
+                    return;
+                }
+                e.preventDefault();
+                
+                const allCards = document.querySelectorAll('.image-card');
+                const selectedCards = document.querySelectorAll('.image-card.selected');
+
+                if (allCards.length > 0 && selectedCards.length === allCards.length) {
+                    deselectAll();
+                } else {
+                    selectAll();
+                }
             }
         });
     </script>
