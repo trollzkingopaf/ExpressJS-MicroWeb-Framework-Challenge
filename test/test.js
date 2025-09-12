@@ -1,7 +1,7 @@
 const request = require('supertest');
 const chai = require('chai');
 const expect = chai.expect;
-const app = require('../story2.1.js'); // Import the app
+const app = require('../story2.2.js'); // Import the app
 const path = require('path');
 const { execFile } = require('child_process');
 const fs = require('fs/promises');
@@ -9,32 +9,50 @@ const JSZip = require('jszip');
 const { randomUUID } = require('crypto');
 const Seven = require('node-7z');
 const path7za = require('7zip-bin').path7za;
+const sharp = require('sharp');
 
 const uploadsDir = path.join(__dirname, '../uploads');
 const tmpDir = path.join(uploadsDir, 'tmp');
-const testImagePath = path.join(__dirname, 'test_image.png');
-const testNonImagePath = path.join(__dirname, 'not_an_image.txt');
+
+// Define paths for test files, assuming they are in a 'test-files' subdirectory
+const testFilesDir = path.join(__dirname, 'test-files');
+const testImagePath = path.join(testFilesDir, 'valid-image.png'); // Use a generic name
+const largeImagePath = path.join(testFilesDir, 'large-image.jpg');
+const smallImagePath = path.join(testFilesDir, 'small-image.png');
+const testNonImagePath = path.join(testFilesDir, 'not_an_image.txt');
+
 const testZipPath = path.join(__dirname, 'test_images.zip');
 const test7zPath = path.join(__dirname, 'test_images.7z');
 const testConflictZipPath = path.join(__dirname, 'test_conflict_images.zip');
+
+// Helper function to reset the application state before tests.
+async function cleanTestState() {
+  await fs.unlink(path.join(__dirname, '../database.json')).catch(err => { if (err.code !== 'ENOENT') throw err; });
+  await fs.rm(uploadsDir, { recursive: true, force: true }).catch(err => { if (err.code !== 'ENOENT' && err.code !== 'EPERM') throw err; });
+  await fs.mkdir(tmpDir, { recursive: true });
+}
 
 describe('Microweb Image Framework', () => {
 
   const temp7zSourceDir = path.join(__dirname, 'temp_7z_source');
 
-  // Before all tests, ensure the uploads directory is clean and exists.
   before(async function() {
     this.timeout(10000); // Increase timeout for setup which involves creating archives.
     try {
-      await fs.unlink(path.join(__dirname, '../database.json')).catch(() => {});
-      await fs.rm(uploadsDir, { recursive: true, force: true });
-      await fs.mkdir(tmpDir, { recursive: true });
+      await fs.rm(testFilesDir, { recursive: true, force: true }).catch(()=>{});
+      await fs.mkdir(testFilesDir, { recursive: true });
+
+      // Programmatically create test files to ensure tests are self-contained
+      await sharp({ create: { width: 150, height: 150, channels: 3, background: { r: 0, g: 255, b: 0 } } }).png().toFile(testImagePath);
+      await sharp({ create: { width: 200, height: 200, channels: 3, background: { r: 255, g: 0, b: 0 } } }).jpeg().toFile(largeImagePath);
+      await sharp({ create: { width: 50, height: 50, channels: 3, background: { r: 0, g: 0, b: 255 } } }).png().toFile(smallImagePath);
+      await fs.writeFile(testNonImagePath, 'This is not an image.');
 
       // Create a test zip file for upload tests
       const zip = new JSZip();
       const imgData = await fs.readFile(testImagePath);
-      const txtData = await fs.readFile(testNonImagePath);
-      zip.file('test_image.png', imgData); // Will conflict with the first test's upload
+      const txtData = await fs.readFile(testNonImagePath, 'utf-8');
+      zip.file('valid-image.png', imgData); // This name will conflict with the first test's upload
       zip.file('another_image.png', imgData);
       zip.file('folder/nested_image.png', imgData); // To test basename extraction
       zip.file('folder/another_image.png', imgData); // To test intra-archive conflicts
@@ -46,7 +64,7 @@ describe('Microweb Image Framework', () => {
       // Create a test 7z file for upload tests, mirroring the zip file's contents
       await fs.rm(temp7zSourceDir, { recursive: true, force: true }); // Clean up from previous runs
       await fs.mkdir(temp7zSourceDir, { recursive: true });
-      await fs.copyFile(testImagePath, path.join(temp7zSourceDir, 'test_image.png'));
+      await fs.copyFile(testImagePath, path.join(temp7zSourceDir, 'valid-image.png'));
       await fs.copyFile(testImagePath, path.join(temp7zSourceDir, 'another_image.png'));
       await fs.mkdir(path.join(temp7zSourceDir, 'folder'));
       await fs.copyFile(testImagePath, path.join(temp7zSourceDir, 'folder', 'nested_image.png'));
@@ -75,9 +93,9 @@ describe('Microweb Image Framework', () => {
     }
   });
 
-  // After all tests are done, close the server and clean up the uploads directory.
   after(async () => {
     try {
+      await fs.rm(testFilesDir, { recursive: true, force: true });
       await fs.unlink(path.join(__dirname, '../database.json')).catch(() => {});
       await fs.rm(temp7zSourceDir, { recursive: true, force: true });
       await fs.rm(uploadsDir, { recursive: true, force: true });
@@ -89,7 +107,6 @@ describe('Microweb Image Framework', () => {
     }
   });
 
-  // --- Unit Tests for Page Rendering ---
   describe('Page Rendering', () => {
     it('GET / should render the welcome page', async () => {
       const res = await request(app)
@@ -108,12 +125,14 @@ describe('Microweb Image Framework', () => {
     });
   });
 
-  // --- Integration Tests for API CRUD Operations ---
   describe('API CRUD Operations (/pictures)', () => {
-    let uploadedImageId; // Will store the ID of the first uploaded image
-
+    
     // CREATE
     describe('POST /pictures', () => {
+      // Isolate each POST test to prevent state pollution.
+      // This is crucial for reliable testing.
+      beforeEach(cleanTestState);
+
       it('should upload an image successfully and return its new ID and metadata', async () => {
         const res = await request(app)
           .post('/pictures')
@@ -123,28 +142,29 @@ describe('Microweb Image Framework', () => {
             expect(res.body.successful).to.be.an('array').with.lengthOf(1);
             const uploadedImage = res.body.successful[0];
             expect(uploadedImage).to.have.property('id');
-            expect(uploadedImage.displayName).to.equal('test_image.png');
-            uploadedImageId = uploadedImage.id; // Save for later tests
+            expect(uploadedImage.displayName).to.equal('valid-image.png');
       });
 
       it('should return a 207 conflict status if a file with the same display name already exists', async () => {
-        // The file 'test_image.png' was uploaded in the previous test
+        // This test is self-contained. It creates its own state.
+        const initialUpload = await request(app).post('/pictures').attach('myImage', testImagePath);
+        const uploadedImageId = initialUpload.body.successful[0].id;
+
+        // Then, it attempts the conflicting action.
         const res = await request(app)
           .post('/pictures')
           .attach('myImage', testImagePath)
           .expect(207);
-            expect(res.body.message).to.include('1 file(s) have naming conflicts.');
-            expect(res.body.conflicts).to.be.an('array').with.lengthOf(1);
-            expect(res.body.conflicts[0].originalFilename).to.equal('test_image.png');
-            expect(res.body.conflicts[0].existingId).to.equal(uploadedImageId);
-            // Clean up the temp file to not leave garbage
-            await fs.unlink(res.body.conflicts[0].tempPath);
+        expect(res.body.message).to.include('1 file(s) have naming conflicts.');
+        expect(res.body.conflicts[0].existingId).to.equal(uploadedImageId);
+
+        // Clean up the temporary conflict file created by the server
+        if (res.body.conflicts && res.body.conflicts[0]) {
+            await fs.unlink(res.body.conflicts[0].tempPath).catch(() => {});
+        }
       });
 
-      it('should reject a non-image file', async function() {
-        // Increase timeout and add proper error handling
-        this.timeout(10000);
-
+      it('should reject a non-image file', async () => {
         const res = await request(app)
           .post('/pictures')
           .attach('myImage', testNonImagePath)
@@ -160,12 +180,40 @@ describe('Microweb Image Framework', () => {
         expect(res.body).to.have.property('message', 'Error: No Files Selected!');
       });
 
+      it('should generate thumbnails for an image larger than 128x128', async () => {
+        const res = await request(app)
+            .post('/pictures')
+            .attach('myImage', largeImagePath)
+            .expect(200);
+
+        expect(res.body.successful[0].thumbnails).to.be.an('object');
+        expect(res.body.successful[0].thumbnails).to.have.property('32');
+        expect(res.body.successful[0].thumbnails).to.have.property('64');
+
+        // Check if thumbnail files were actually created on disk
+        const thumb32Path = path.join(uploadsDir, res.body.successful[0].thumbnails['32']);
+        const thumb64Path = path.join(uploadsDir, res.body.successful[0].thumbnails['64']);
+        
+        await fs.access(thumb32Path);
+        await fs.access(thumb64Path);
+      });
+
+      it('should NOT generate thumbnails for an image smaller than 128x128', async () => {
+        const res = await request(app)
+            .post('/pictures')
+            .attach('myImage', smallImagePath)
+            .expect(200);
+
+        expect(res.body.successful[0].thumbnails).to.be.null;
+      });
+
       // --- New tests for ZIP functionality ---
       describe('with ZIP file', () => {
-        // Clean up images from zip before this suite runs to ensure a clean slate
-        before(async () => {
-            await fs.unlink(path.join(uploadsDir, 'another_image.png')).catch(()=>{});
-            await fs.unlink(path.join(uploadsDir, 'nested_image.png')).catch(()=>{});
+        // Before each test in this suite, ensure a clean state and then
+        // seed the database with one conflicting file.
+        beforeEach(async () => {
+            await cleanTestState();
+            await request(app).post('/pictures').attach('myImage', testImagePath);
         });
 
         it('should upload all new images from a zip file, skipping existing ones', async () => {
@@ -195,32 +243,10 @@ describe('Microweb Image Framework', () => {
 
       // --- New tests for 7z functionality ---
       describe('with 7z file', () => {
-        // This hook cleans up the state left by the previous ZIP test suite,
-        // ensuring this suite runs with a predictable starting state.
-        before(async function() {
-            const dbPath = path.join(__dirname, '../database.json');
-            try {
-                const data = await fs.readFile(dbPath, 'utf-8');
-                const db = JSON.parse(data);
-                
-                const idsToDelete = [];
-                const filesToDelete = [];
-
-                for (const id in db) {
-                    if (db[id].displayName === 'another_image.png' || db[id].displayName === 'nested_image.png') {
-                        idsToDelete.push(id);
-                        filesToDelete.push(path.join(uploadsDir, db[id].physicalFilename));
-                    }
-                }
-
-                if (idsToDelete.length > 0) {
-                    idsToDelete.forEach(id => delete db[id]);
-                    await fs.writeFile(dbPath, JSON.stringify(db, null, 2));
-                    await Promise.all(filesToDelete.map(f => fs.unlink(f).catch(() => {})));
-                }
-            } catch (err) {
-                // Ignore errors (e.g., DB file not found), as it means the state is already clean.
-            }
+        // Isolate these tests by resetting state and seeding the DB for a conflict.
+        beforeEach(async function() {
+            await cleanTestState();
+            await request(app).post('/pictures').attach('myImage', testImagePath);
         });
 
         it('should upload all new images from a 7z file, skipping existing ones', async function() {
@@ -266,15 +292,16 @@ describe('Microweb Image Framework', () => {
       });
     });
 
-    // --- New tests for Conflict Resolution ---
     describe('POST /pictures/resolve-conflict', () => {
         let conflict;
 
-        // Before these tests, create a conflict situation
-        before(async () => {
+        // Before each test, create a fresh conflict situation to resolve.
+        beforeEach(async () => {
+            await cleanTestState();
+            await request(app).post('/pictures').attach('myImage', testImagePath);
             const res = await request(app)
                 .post('/pictures')
-                .attach('myImage', testImagePath, 'test_image.png') // This should already exist
+                .attach('myImage', testImagePath)
                 .expect(207);
             conflict = res.body.conflicts[0];
         });
@@ -297,36 +324,30 @@ describe('Microweb Image Framework', () => {
         });
 
         it('should resolve a conflict by overwriting the existing file', async () => {
-            // Create a new conflict to resolve
-            const conflictRes = await request(app).post('/pictures').attach('myImage', testImagePath, 'test_image.png');
-            const newConflict = conflictRes.body.conflicts[0];
             const res = await request(app)
                 .post('/pictures/resolve-conflict')
                 .send({
                     action: 'overwrite',
-                    tempPath: newConflict.tempPath,
-                    existingId: newConflict.existingId
+                    tempPath: conflict.tempPath,
+                    existingId: conflict.existingId
                 })
                 .expect(200);
-            expect(res.body.message).to.equal(`File '${newConflict.originalFilename}' was overwritten.`);
+            expect(res.body.message).to.equal(`File '${conflict.originalFilename}' was overwritten.`);
         });
 
         it('should resolve a conflict by skipping the new file', async () => {
-            // Create a new conflict to resolve
-            const conflictRes = await request(app).post('/pictures').attach('myImage', testImagePath, 'test_image.png');
-            const newConflict = conflictRes.body.conflicts[0];
             const res = await request(app)
                 .post('/pictures/resolve-conflict')
                 .send({
                     action: 'skip',
-                    tempPath: newConflict.tempPath,
-                    originalFilename: newConflict.originalFilename
+                    tempPath: conflict.tempPath,
+                    originalFilename: conflict.originalFilename
                 })
                 .expect(200);
-            expect(res.body.message).to.equal(`Upload of '${newConflict.originalFilename}' was skipped.`);
+            expect(res.body.message).to.equal(`Upload of '${conflict.originalFilename}' was skipped.`);
             // Verify the temp file was deleted
             try {
-                await fs.access(newConflict.tempPath);
+                await fs.access(conflict.tempPath);
                 // If this line is reached, the file exists, which is an error.
                 throw new Error('Temp file was not deleted');
             } catch (err) {
@@ -338,11 +359,16 @@ describe('Microweb Image Framework', () => {
 
     // READ
     describe('GET /pictures', () => {
+      // Isolate this test by cleaning state first.
+      beforeEach(cleanTestState);
+
       it('should return a list containing the uploaded image with its metadata', async () => {
+        const uploadRes = await request(app).post('/pictures').attach('myImage', testImagePath);
+        const uploadedImageId = uploadRes.body.successful[0].id;
         const res = await request(app)
           .get('/pictures')
           .expect(200);
-            expect(res.body).to.be.an('array').and.not.be.empty;
+            expect(res.body).to.be.an('array').with.lengthOf(1, 'Expected to find one image in the gallery');
             const image = res.body.find(img => img.id === uploadedImageId);
             expect(image).to.exist;
             expect(image).to.have.property('link');
@@ -355,18 +381,27 @@ describe('Microweb Image Framework', () => {
     // UPDATE
     describe('PUT /pictures/:id', () => {
         const newImageName = 'new_test_image.png';
-        const newImagePath = path.join(__dirname, newImageName);
+        const newImagePath = path.join(testFilesDir, newImageName);
+        let imageToUpdate;
 
-        before(async () => await fs.copyFile(testImagePath, newImagePath));
-        after(async () => await fs.unlink(newImagePath));
+        // Before each test, clean state and upload one image to be updated.
+        beforeEach(async () => {
+            await cleanTestState();
+            const res = await request(app).post('/pictures').attach('myImage', testImagePath);
+            imageToUpdate = res.body.successful[0];
+            await fs.copyFile(testImagePath, newImagePath);
+        });
+
+        // Clean up the temporary replacement image file.
+        afterEach(async () => await fs.unlink(newImagePath).catch(()=>{}));
 
         it('should replace an existing image with a new one using its ID', async () => {
             const res = await request(app)
-                .put(`/pictures/${uploadedImageId}`)
+                .put(`/pictures/${imageToUpdate.id}`)
                 .attach('myImage', newImagePath)
                 .expect(200);
             expect(res.body.message).to.equal('File updated successfully');
-            expect(res.body.link).to.include(uploadedImageId);
+            expect(res.body.link).to.include(imageToUpdate.id);
         });
 
         it('should return 404 if trying to update a non-existent file', async () => {
@@ -379,7 +414,7 @@ describe('Microweb Image Framework', () => {
 
         it('should return 400 if trying to replace an image with a zip file', async () => {
             const res = await request(app)
-                .put(`/pictures/${uploadedImageId}`)
+                .put(`/pictures/${imageToUpdate.id}`)
                 .attach('myImage', testZipPath)
                 .expect(400);
             expect(res.body).to.deep.equal({ message: 'Only image files can be used to replace an existing image.' });
@@ -388,44 +423,66 @@ describe('Microweb Image Framework', () => {
 
     // PATCH (for filename update)
     describe('PATCH /pictures/:id', () => {
+        let imageToPatch;
+
+        // Before each test, clean state and upload one image to be patched.
+        beforeEach(async () => {
+            await cleanTestState();
+            const res = await request(app).post('/pictures').attach('myImage', testImagePath);
+            imageToPatch = res.body.successful[0];
+        });
+
         it('should update the display name of an existing image', async () => {
             const newName = 'renamed_image.png';
             const res = await request(app)
-                .patch(`/pictures/${uploadedImageId}`)
+                .patch(`/pictures/${imageToPatch.id}`)
                 .send({ newFilename: newName })
                 .expect(200);
             expect(res.body.message).to.equal('Filename updated successfully.');
+
+            // Verify the change and the timestamp in the database
+            const getRes = await request(app).get('/pictures');
+            const renamedImage = getRes.body.find(img => img.id === imageToPatch.id);
+            expect(renamedImage.displayName).to.equal(newName);
+            expect(renamedImage.lastModifiedAt).to.not.equal(renamedImage.uploadedAt);
         });
 
         it('should return 409 if the new display name already exists', async () => {
-            // First, re-upload the original test image so we have a conflict
+            // Upload a second image to create a naming conflict.
             await request(app).post('/pictures').attach('myImage', testImagePath);
             await request(app)
-                .patch(`/pictures/${uploadedImageId}`) // Try to rename our file to the one that now exists
-                .send({ newFilename: 'test_image.png' })
+                .patch(`/pictures/${imageToPatch.id}`) // Try to rename our file to the one that now exists
+                .send({ newFilename: 'valid-image.png' })
                 .expect(409, { message: 'A file with this display name already exists.' });
         });
     });
 
     // DELETE
     describe('DELETE /pictures', () => {
-      it('should delete the uploaded image', async function() {
-        this.timeout(5000);
-        const res = await request(app)
-          .delete(`/pictures`)
-          .send({ ids: [uploadedImageId] })
-          .expect(200);
-        expect(res.body).to.have.property('message', '1 image(s) deleted successfully.');
-      });
+        let imageToDeleteId;
+        let physicalFilename;
 
-      it('should return a 200 with 0 deleted if trying to delete a non-existent file', async function() {
-        this.timeout(5000);
-        const res = await request(app)
-          .delete(`/pictures`) // Trying to delete it again
-          .send({ ids: [uploadedImageId] })
-          .expect(200);
-        expect(res.body).to.deep.equal({ message: '0 image(s) deleted successfully.' });
-      });
+        // Before each test, clean state and upload one image to be deleted.
+        beforeEach(async () => {
+            await cleanTestState();
+            const res = await request(app).post('/pictures').attach('myImage', largeImagePath);
+            const imageToDelete = res.body.successful[0];
+            imageToDeleteId = imageToDelete.id;
+            const db = JSON.parse(await fs.readFile(path.join(__dirname, '../database.json'), 'utf-8'));
+            physicalFilename = db[imageToDeleteId].physicalFilename;
+        });
+
+        it('should successfully delete an image from the database and the file system', async () => {
+            await request(app).delete('/pictures').send({ ids: [imageToDeleteId] }).expect(200);
+
+            // Verify the physical file is gone from disk
+            try {
+                await fs.access(path.join(uploadsDir, physicalFilename));
+                throw new Error('File was not deleted from the file system.');
+            } catch (err) {         
+                expect(err.code).to.equal('ENOENT');
+            }
+        });
     });
   });
 });
